@@ -141,6 +141,8 @@ func (p *Provider) NewMachine(opts machine.InitOptions) (machine.VM, error) {
 		// starts with an letter but users can also use numbers
 		"-chardev", "socket,path=" + vm.ReadySocket.Path + ",server=on,wait=off,id=a" + vm.Name + "_ready",
 		"-device", "virtserialport,chardev=a" + vm.Name + "_ready" + ",name=org.fedoraproject.port.0",
+		"-chardev", "socket,path=" + "/tmp/qga.sock" + ",server=on,wait=off,id=qga0",
+		"-device", "virtserialport,chardev=qga0,name=org.fedoraproject.port.0",
 		"-pidfile", vm.VMPidFilePath.GetPath()}...)
 	vm.CmdLine = cmd
 	return vm, nil
@@ -175,6 +177,9 @@ func migrateVM(configPath string, config []byte, vm *MachineVM) error {
 	virtualSocketPath := filepath.Join(socketPath, "podman", vm.Name+"_ready.sock")
 	readySocket := machine.VMFile{Path: virtualSocketPath}
 
+	virtualSocketPath = filepath.Join(socketPath, "podman", vm.Name+"_qemuga.sock")
+	qemugaSocket := machine.VMFile{Path: virtualSocketPath}
+
 	vm.HostUser = machine.HostUser{}
 	vm.ImageConfig = machine.ImageConfig{}
 	vm.ResourceConfig = machine.ResourceConfig{}
@@ -206,6 +211,7 @@ func migrateVM(configPath string, config []byte, vm *MachineVM) error {
 	vm.Name = old.Name
 	vm.PidFilePath = pidFilePath
 	vm.Port = old.Port
+	vm.QEMUGASocket = qemugaSocket
 	vm.QMPMonitor = qmpMonitor
 	vm.ReadySocket = readySocket
 	vm.RemoteUsername = old.RemoteUsername

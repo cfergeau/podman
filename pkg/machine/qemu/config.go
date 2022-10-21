@@ -75,6 +75,8 @@ type MachineVM struct {
 	VMPidFilePath machine.VMFile
 	// QMPMonitor is the qemu monitor object for sending commands
 	QMPMonitor Monitor
+	// QEMUGASocket is used for communication with the guest qemu-guest-agent
+	QEMUGASocket machine.VMFile
 	// ReadySocket tells host when vm is booted
 	ReadySocket machine.VMFile
 	// ResourceConfig is physical attrs of the VM
