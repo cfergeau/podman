@@ -17,7 +17,6 @@ import (
 	"github.com/containers/podman/v5/pkg/machine/define"
 	"github.com/containers/podman/v5/utils"
 	"github.com/containers/storage/pkg/archive"
-	crcOs "github.com/crc-org/crc/v2/pkg/os"
 	"github.com/klauspost/compress/zstd"
 	"github.com/sirupsen/logrus"
 	"github.com/ulikunitz/xz"
@@ -63,10 +62,7 @@ func Decompress(localPath *define.VMFile, uncompressedPath string) error {
 		// darwin really struggles with sparse files. being diligent here
 		fmt.Printf("Copying uncompressed file %q to %q/n", localPath.GetPath(), dstFile.Name())
 
-		// Keeping CRC implementation for now, but ideally this could be pruned and
-		// sparsewriter could be used.  in that case, this area needs rework or
-		// sparsewriter be made to honor the *file interface
-		_, err = crcOs.CopySparse(uncompressedFileWriter, dstFile)
+		err = CopySparse(prefix, dstFile, uncompressedFileWriter)
 		return err
 	case archive.Gzip:
 		if runtime.GOOS == "darwin" {
@@ -236,7 +232,7 @@ func decompressZip(prefix string, src string, output io.WriteCloser) error {
 	return err
 }
 
-func decompressWithSparse(prefix string, compressedReader io.Reader, uncompressedFile *os.File) error {
+func CopySparse(prefix string, compressedReader io.Reader, uncompressedFile *os.File) error {
 	dstFile := NewSparseWriter(uncompressedFile)
 	defer func() {
 		if err := dstFile.Close(); err != nil {
@@ -284,7 +280,7 @@ func decompressGzWithSparse(prefix string, compressedPath *define.VMFile, uncomp
 	defer func() {
 		logrus.Debug("decompression complete")
 	}()
-	return decompressWithSparse(prefix, gzReader, uncompressedFileWriter)
+	return CopySparse(prefix, gzReader, uncompressedFileWriter)
 }
 
 func decompressZstdWithSparse(prefix string, compressedPath *define.VMFile, uncompressedFileWriter *os.File) error {
@@ -309,5 +305,5 @@ func decompressZstdWithSparse(prefix string, compressedPath *define.VMFile, unco
 	defer func() {
 		logrus.Debug("decompression complete")
 	}()
-	return decompressWithSparse(prefix, zstdReader, uncompressedFileWriter)
+	return CopySparse(prefix, zstdReader, uncompressedFileWriter)
 }
