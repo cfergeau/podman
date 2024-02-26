@@ -22,6 +22,7 @@ import (
 	"github.com/containers/podman/v5/pkg/machine/vmconfigs"
 	"github.com/containers/podman/v5/utils"
 	vfConfig "github.com/crc-org/vfkit/pkg/config"
+	vfUtil "github.com/crc-org/vfkit/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -71,7 +72,7 @@ func (a AppleHVStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.Machine
 	// Populate the ignition file with virtiofs stuff
 	ignBuilder.WithUnit(generateSystemDFilesForVirtiofsMounts(virtiofsMounts)...)
 
-	return resizeDisk(mc, strongunits.GiB(mc.Resources.DiskSize))
+	return vfUtil.ResizeDiskImage(mc.ImagePath.GetPath(), strongunits.GiB(mc.Resources.DiskSize))
 }
 
 func (a AppleHVStubber) Exists(name string) (bool, error) {

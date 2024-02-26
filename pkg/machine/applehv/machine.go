@@ -4,10 +4,8 @@ package applehv
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 
-	"github.com/containers/common/pkg/strongunits"
 	"github.com/containers/podman/v5/pkg/machine"
 	"github.com/containers/podman/v5/pkg/machine/define"
 	"github.com/containers/podman/v5/pkg/machine/ignition"
@@ -93,13 +91,6 @@ func checkProcessRunning(processName string, pid int) error {
 		return fmt.Errorf("%s exited unexpectedly with exit code %d", processName, status.ExitStatus())
 	}
 	return nil
-}
-
-// resizeDisk uses os truncate to resize (only larger) a raw disk.  the input size
-// is assumed GiB
-func resizeDisk(mc *vmconfigs.MachineConfig, newSize strongunits.GiB) error {
-	logrus.Debugf("resizing %s to %d bytes", mc.ImagePath.GetPath(), newSize.ToBytes())
-	return os.Truncate(mc.ImagePath.GetPath(), int64(newSize.ToBytes()))
 }
 
 func generateSystemDFilesForVirtiofsMounts(mounts []machine.VirtIoFs) []ignition.Unit {
