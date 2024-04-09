@@ -3,7 +3,6 @@ package fileserver
 import (
 	"fmt"
 
-	"github.com/containers/podman/v5/pkg/fileserver/plan9"
 	"github.com/linuxkit/virtsock/pkg/hvsock"
 	"github.com/sirupsen/logrus"
 )
@@ -14,9 +13,8 @@ import (
 // expected that the vsocks will be created and torn down by the program calling
 // gvproxy.
 // TODO: The map here probably doesn't make sense.
-// In the future, possibly accept a struct instead, so we can accept things
-// other than a vsock and support non-Windows OSes.
 func StartHvsockShares(mounts map[string]string) (defErr error) {
+	plan9Mounts := []Mount{}
 	for path, guid := range mounts {
 		service, err := hvsock.GUIDFromString(guid)
 		if err != nil {
@@ -32,31 +30,7 @@ func StartHvsockShares(mounts map[string]string) (defErr error) {
 		}
 
 		logrus.Debugf("Going to serve directory %s on vsock %s", path, guid)
-
-		server, err := plan9.New9pServer(listener, path)
-		if err != nil {
-			return fmt.Errorf("serving directory %s on vsock %s: %w", path, guid, err)
-		}
-		defer func() {
-			if defErr != nil {
-				if err := server.Stop(); err != nil {
-					logrus.Errorf("Error stopping 9p server: %v", err)
-				}
-			}
-		}()
-
-		serverDir := path
-
-		go func() {
-			if err := server.WaitForError(); err != nil {
-				logrus.Errorf("Error from 9p server for %s: %v", serverDir, err)
-			} else {
-				// We do not expect server exits - this should
-				// run until the program exits.
-				logrus.Warnf("9p server for %s exited without error", serverDir)
-			}
-		}()
+		plan9Mounts = append(plan9Mounts, Mount{Listener: listener, Path: path})
 	}
-
-	return nil
+	return StartShares(plan9Mounts)
 }
