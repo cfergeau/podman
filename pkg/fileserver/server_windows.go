@@ -16,7 +16,7 @@ import (
 // TODO: The map here probably doesn't make sense.
 // In the future, possibly accept a struct instead, so we can accept things
 // other than a vsock and support non-Windows OSes.
-func StartShares(mounts map[string]string) (defErr error) {
+func StartHvsockShares(mounts map[string]string) (defErr error) {
 	for path, guid := range mounts {
 		service, err := hvsock.GUIDFromString(guid)
 		if err != nil {

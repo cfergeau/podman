@@ -73,7 +73,7 @@ func remoteDirServer(cmd *cobra.Command, args []string) error {
 		shares[path] = splitShare[len(splitShare)-1]
 	}
 
-	if err := fileserver.StartShares(shares); err != nil {
+	if err := fileserver.StartHvsockShares(shares); err != nil {
 		return err
 	}
 

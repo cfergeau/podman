@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func StartShares(mounts map[string]string) error {
+func StartHvsockShares(mounts map[string]string) error {
 	if len(mounts) == 0 {
 		return nil
 	}
