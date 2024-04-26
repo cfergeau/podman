@@ -7,6 +7,19 @@
     <license file="LICENSE.txt"/>
     <options customize="never" hostArchitectures="x86_64,arm64" />
     <domains enable_localSystem="true" />
+    <installation-check script="installCheck();"/>
+    <script>
+function installCheck() {
+    if(!(system.compareVersions(system.version.ProductVersion, '13.0.0') >= 0)) {
+        my.result.title = 'Unable to install';
+        my.result.message = 'podman requires macOS 13 or later.';
+        my.result.type = 'Fatal';
+        return false;
+    }
+
+    return true;
+}
+    </script>
     <choices-outline>
         <line choice="podman"/>
     </choices-outline>
