@@ -92,6 +92,7 @@ func requestMachinePorts(expose bool, ports []types.PortMapping) error {
 }
 
 func makeMachineRequest(ctx context.Context, client *http.Client, url string, buf io.Reader) error {
+	logrus.Infof("request to %s", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, buf)
 	if err != nil {
 		return err
