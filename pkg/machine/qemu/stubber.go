@@ -39,7 +39,7 @@ var (
 	gvProxyMaxBackoffAttempts = 6
 )
 
-func (q *QEMUStubber) UserModeNetworkEnabled(*vmconfigs.MachineConfig) bool {
+func (q *QEMUStubber) UserModeNetworkDefault() bool {
 	return true
 }
 

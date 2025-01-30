@@ -119,7 +119,7 @@ func (l *LibKrunStubber) VMType() define.VMType {
 	return define.LibKrun
 }
 
-func (l *LibKrunStubber) UserModeNetworkEnabled(mc *vmconfigs.MachineConfig) bool {
+func (l *LibKrunStubber) UserModeNetworkDefault() bool {
 	return true
 }
 

@@ -74,7 +74,7 @@ func verifyWSLUserModeCompat() error {
 }
 
 func startUserModeNetworking(mc *vmconfigs.MachineConfig) error {
-	if !mc.WSLHypervisor.UserModeNetworking {
+	if !mc.UserModeNetworking {
 		return nil
 	}
 
@@ -118,7 +118,7 @@ func startUserModeNetworking(mc *vmconfigs.MachineConfig) error {
 }
 
 func stopUserModeNetworking(mc *vmconfigs.MachineConfig) error {
-	if !mc.WSLHypervisor.UserModeNetworking {
+	if !mc.UserModeNetworking {
 		return nil
 	}
 

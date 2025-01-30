@@ -14,10 +14,7 @@ type HyperVConfig struct {
 	NetworkVSock vsock.HVSockRegistryEntry
 }
 
-type WSLConfig struct {
-	// Uses usermode networking
-	UserModeNetworking bool
-}
+type WSLConfig struct{}
 
 type QEMUConfig struct {
 	// QMPMonitor is the qemu monitor object for sending commands

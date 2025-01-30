@@ -59,7 +59,7 @@ func List(vmstubbers []vmconfigs.VMProvider, _ machine.ListOptions) ([]*machine.
 				Port:               mc.SSH.Port,
 				RemoteUsername:     mc.SSH.RemoteUsername,
 				IdentityPath:       mc.SSH.IdentityPath,
-				UserModeNetworking: s.UserModeNetworkEnabled(mc),
+				UserModeNetworking: mc.UserModeNetworking,
 			}
 			lrs = append(lrs, &lr)
 		}
@@ -118,9 +118,12 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		Dirs: dirs,
 	}
 
+	// use default from machine provider, override it if the option was specified on the commandline
+	mc.UserModeNetworking = mp.UserModeNetworkDefault()
 	if umn := opts.UserModeNetworking; umn != nil {
-		createOpts.UserModeNetworking = *umn
+		mc.UserModeNetworking = *umn
 	}
+	logrus.Warnf("usermode netwowking: %t", mc.UserModeNetworking)
 
 	imagePuller := opts.ImagePuller
 	if imagePuller == nil {

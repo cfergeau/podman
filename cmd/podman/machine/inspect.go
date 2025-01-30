@@ -91,7 +91,7 @@ func inspect(cmd *cobra.Command, args []string) error {
 			Resources:          mc.Resources,
 			SSHConfig:          mc.SSH,
 			State:              state,
-			UserModeNetworking: provider.UserModeNetworkEnabled(mc),
+			UserModeNetworking: mc.UserModeNetworking,
 			Rootful:            mc.HostUser.Rootful,
 			Rosetta:            rosetta,
 		}

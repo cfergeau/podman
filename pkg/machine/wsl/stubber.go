@@ -42,11 +42,11 @@ func (w WSLStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.MachineConf
 
 	_ = setupWslProxyEnv()
 
-	if opts.UserModeNetworking {
+	if mc.UserModeNetworking {
 		if err = verifyWSLUserModeCompat(); err != nil {
 			return err
 		}
-		mc.WSLHypervisor.UserModeNetworking = true
+		mc.UserModeNetworking = true
 	}
 
 	const prompt = "Importing operating system into WSL (this may take a few minutes on a new WSL install)..."
@@ -60,7 +60,7 @@ func (w WSLStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.MachineConf
 	}
 	callbackFuncs.Add(unprovisionCallbackFunc)
 
-	if mc.WSLHypervisor.UserModeNetworking {
+	if mc.UserModeNetworking {
 		if err = installUserModeDist(dist, mc.ImagePath.GetPath()); err != nil {
 			_ = unregisterDist(dist)
 			return err
@@ -149,7 +149,7 @@ func (w WSLStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts define.Se
 		return errors.New("changing disk size not supported for WSL machines")
 	}
 
-	if opts.UserModeNetworking != nil && mc.WSLHypervisor.UserModeNetworking != *opts.UserModeNetworking {
+	if opts.UserModeNetworking != nil && mc.UserModeNetworking != *opts.UserModeNetworking {
 		if running, _ := isRunning(mc.Name); running {
 			return errors.New("user-mode networking can only be changed when the machine is not running")
 		}
@@ -159,7 +159,7 @@ func (w WSLStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts define.Se
 			return fmt.Errorf("failure changing state of user-mode networking setting: %w", err)
 		}
 
-		mc.WSLHypervisor.UserModeNetworking = *opts.UserModeNetworking
+		mc.UserModeNetworking = *opts.UserModeNetworking
 	}
 
 	return nil
@@ -167,14 +167,14 @@ func (w WSLStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts define.Se
 
 func (w WSLStubber) StartNetworking(mc *vmconfigs.MachineConfig, cmd *gvproxy.GvproxyCommand) error {
 	// Startup user-mode networking if enabled
-	if mc.WSLHypervisor.UserModeNetworking {
+	if mc.UserModeNetworking {
 		return startUserModeNetworking(mc)
 	}
 	return nil
 }
 
-func (w WSLStubber) UserModeNetworkEnabled(mc *vmconfigs.MachineConfig) bool {
-	return mc.WSLHypervisor.UserModeNetworking
+func (w WSLStubber) UserModeNetworkDefault() bool {
+	return false
 }
 
 func (w WSLStubber) UseProviderNetworkSetup() bool {

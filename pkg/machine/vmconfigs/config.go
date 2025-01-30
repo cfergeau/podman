@@ -14,9 +14,10 @@ const MachineConfigVersion = 1
 
 type MachineConfig struct {
 	// Common stuff
-	Created  time.Time
-	GvProxy  gvproxy.GvproxyCommand
-	HostUser HostUser
+	Created            time.Time
+	UserModeNetworking bool
+	GvProxy            gvproxy.GvproxyCommand
+	HostUser           HostUser
 
 	LastUp time.Time
 
@@ -97,7 +98,7 @@ type VMProvider interface { //nolint:interfacebloat
 	StopVM(mc *MachineConfig, hardStop bool) error
 	StopHostNetworking(mc *MachineConfig, vmType define.VMType) error
 	VMType() define.VMType
-	UserModeNetworkEnabled(mc *MachineConfig) bool
+	UserModeNetworkDefault() bool
 	UseProviderNetworkSetup() bool
 	RequireExclusiveActive() bool
 	UpdateSSHPort(mc *MachineConfig, port int) error

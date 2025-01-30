@@ -28,7 +28,7 @@ type HyperVStubber struct {
 	vmconfigs.HyperVConfig
 }
 
-func (h HyperVStubber) UserModeNetworkEnabled(mc *vmconfigs.MachineConfig) bool {
+func (h HyperVStubber) UserModeNetworkDefault() bool {
 	return true
 }
 

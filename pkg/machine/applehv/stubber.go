@@ -30,7 +30,7 @@ type AppleHVStubber struct {
 	vmconfigs.AppleHVConfig
 }
 
-func (a *AppleHVStubber) UserModeNetworkEnabled(_ *vmconfigs.MachineConfig) bool {
+func (a *AppleHVStubber) UserModeNetworkDefault() bool {
 	return true
 }
 

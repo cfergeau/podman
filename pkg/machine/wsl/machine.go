@@ -206,7 +206,7 @@ func configureSystem(mc *vmconfigs.MachineConfig, dist string, ansibleConfig *vm
 		return err
 	}
 
-	return changeDistUserModeNetworking(dist, user, mc.ImagePath.GetPath(), mc.WSLHypervisor.UserModeNetworking)
+	return changeDistUserModeNetworking(dist, user, mc.ImagePath.GetPath(), mc.UserModeNetworking)
 }
 
 func configureBindMounts(dist string, user string) error {
