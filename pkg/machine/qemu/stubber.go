@@ -75,13 +75,17 @@ func (q *QEMUStubber) setQEMUCommandLine(mc *vmconfigs.MachineConfig) error {
 	q.Command.SetCPUs(mc.Resources.CPUs)
 	q.Command.SetIgnitionFile(*ignitionFile)
 	q.Command.SetQmpMonitor(mc.QEMUHypervisor.QMPMonitor)
-	gvProxySock, err := mc.GVProxySocket()
-	if err != nil {
-		return err
+	if mc.UserModeNetworking {
+		gvProxySock, err := mc.GVProxySocket()
+		if err != nil {
+			return err
+		}
+		if err := q.Command.SetNetwork(gvProxySock); err != nil {
+			return err
+		}
+	} else {
 	}
-	if err := q.Command.SetNetwork(gvProxySock); err != nil {
-		return err
-	}
+
 	q.Command.SetSerialPort(*readySocket, *mc.QEMUHypervisor.QEMUPidPath, mc.Name)
 
 	q.Command.SetUSBHostPassthrough(mc.Resources.USBs)
@@ -145,14 +149,16 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 		return nil, nil, err
 	}
 
-	gvProxySock, err := mc.GVProxySocket()
-	if err != nil {
-		return nil, nil, err
-	}
+	if mc.UserModeNetworking {
+		gvProxySock, err := mc.GVProxySocket()
+		if err != nil {
+			return nil, nil, err
+		}
 
-	// Wait on gvproxy to be running and aware
-	if err := sockets.WaitForSocketWithBackoffs(gvProxyMaxBackoffAttempts, gvProxyWaitBackoff, gvProxySock.GetPath(), "gvproxy"); err != nil {
-		return nil, nil, err
+		// Wait on gvproxy to be running and aware
+		if err := sockets.WaitForSocketWithBackoffs(gvProxyMaxBackoffAttempts, gvProxyWaitBackoff, gvProxySock.GetPath(), "gvproxy"); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	dnr, dnw, err := machine.GetDevNullFiles()
@@ -313,6 +319,9 @@ func (q *QEMUStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts define.
 }
 
 func (q *QEMUStubber) StartNetworking(mc *vmconfigs.MachineConfig, cmd *gvproxy.GvproxyCommand) error {
+	if !mc.UserModeNetworking {
+		return nil
+	}
 	gvProxySock, err := mc.GVProxySocket()
 	if err != nil {
 		return err
