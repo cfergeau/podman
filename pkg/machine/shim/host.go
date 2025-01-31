@@ -83,6 +83,13 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		return err
 	}
 
+	if opts.Capabilities == nil {
+		opts.Capabilities = &machineDefine.MachineCapabilities{
+			HasSSH:       true,
+			UsesIgnition: true,
+			HasReadyUnit: true,
+		}
+	}
 	/* check the path to env.GetSSHIdentityPath */
 	/* ----> Can we make it configurable in initopts? */
 	/* Can we dynamically update vmconfig.SSH ? */
