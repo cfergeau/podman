@@ -58,6 +58,8 @@ type MachineConfig struct {
 	Ansible *AnsibleConfig
 
 	CloudInit bool
+
+	ForwardSockets bool
 }
 
 type machineImage interface { //nolint:unused
