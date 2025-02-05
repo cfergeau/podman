@@ -68,6 +68,105 @@ func List(vmstubbers []vmconfigs.VMProvider, _ machine.ListOptions) ([]*machine.
 	return lrs, nil
 }
 
+func generateIgnitionConfig(opts machineDefine.InitOptions, mp vmconfigs.VMProvider, mc *vmconfigs.MachineConfig) (*ignition.IgnitionBuilder, error) {
+	sshIdentityPath := mc.SSH.IdentityPath
+	sshKey, err := machine.GetSSHKeys(sshIdentityPath)
+	if err != nil {
+		return nil, err
+	}
+
+	uid := os.Getuid()
+	if uid == -1 { // windows compensation
+		uid = 1000
+	}
+
+	// TODO the definition of "user" should go into
+	// common for WSL
+	userName := opts.Username
+	if mp.VMType() == machineDefine.WSLVirt {
+		if opts.Username == "core" {
+			userName = "user"
+			mc.SSH.RemoteUsername = "user"
+		}
+	}
+
+	ignitionFile, err := mc.IgnitionFile()
+	if err != nil {
+		return nil, err
+	}
+
+	ignBuilder := ignition.NewIgnitionBuilder(ignition.DynamicIgnition{
+		Name:      userName,
+		Key:       sshKey,
+		TimeZone:  opts.TimeZone,
+		UID:       uid,
+		VMName:    opts.Name,
+		VMType:    mp.VMType(),
+		WritePath: ignitionFile.GetPath(),
+		Rootful:   opts.Rootful,
+	})
+
+	// If the user provides an ignition file, we need to
+	// copy it into the conf dir
+	if len(opts.IgnitionPath) > 0 {
+		err = ignBuilder.BuildWithIgnitionFile(opts.IgnitionPath)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = ignBuilder.GenerateIgnitionConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(opts.PlaybookPath) > 0 {
+		f, err := os.Open(opts.PlaybookPath)
+		if err != nil {
+			return nil, err
+		}
+		s, err := io.ReadAll(f)
+		if err != nil {
+			return nil, fmt.Errorf("read playbook: %w", err)
+		}
+
+		playbookDest := fmt.Sprintf("/home/%s/%s", userName, "playbook.yaml")
+
+		if mp.VMType() != machineDefine.WSLVirt {
+			err = ignBuilder.AddPlaybook(string(s), playbookDest, userName)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		mc.Ansible = &vmconfigs.AnsibleConfig{
+			PlaybookPath: playbookDest,
+			Contents:     string(s),
+			User:         userName,
+		}
+	}
+
+	readyIgnOpts, err := mp.PrepareIgnition(mc, &ignBuilder)
+	if err != nil {
+		return nil, err
+	}
+
+	readyUnitFile, err := ignition.CreateReadyUnitFile(mp.VMType(), readyIgnOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	readyUnit := ignition.Unit{
+		Enabled:  ignition.BoolToPtr(true),
+		Name:     "ready.service",
+		Contents: ignition.StrToPtr(readyUnitFile),
+	}
+	ignBuilder.WithUnit(readyUnit)
+
+	return &ignBuilder, nil
+}
+
 func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 	var (
 		err       error
@@ -100,10 +199,6 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		if err != nil {
 			return err
 		}
-	}
-	sshKey, err := machine.GetSSHKeys(sshIdentityPath)
-	if err != nil {
-		return err
 	}
 
 	machineLock, err := lock.GetMachineLock(opts.Name, dirs.ConfigDir.GetPath())
@@ -168,94 +263,10 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 
 	logrus.Debugf("--> imagePath is %q", imagePath.GetPath())
 
-	ignitionFile, err := mc.IgnitionFile()
+	ignBuilder, err := generateIgnitionConfig(opts, mp, mc)
 	if err != nil {
 		return err
 	}
-
-	uid := os.Getuid()
-	if uid == -1 { // windows compensation
-		uid = 1000
-	}
-
-	// TODO the definition of "user" should go into
-	// common for WSL
-	userName := opts.Username
-	if mp.VMType() == machineDefine.WSLVirt {
-		if opts.Username == "core" {
-			userName = "user"
-			mc.SSH.RemoteUsername = "user"
-		}
-	}
-
-	ignBuilder := ignition.NewIgnitionBuilder(ignition.DynamicIgnition{
-		Name:      userName,
-		Key:       sshKey,
-		TimeZone:  opts.TimeZone,
-		UID:       uid,
-		VMName:    opts.Name,
-		VMType:    mp.VMType(),
-		WritePath: ignitionFile.GetPath(),
-		Rootful:   opts.Rootful,
-	})
-
-	// If the user provides an ignition file, we need to
-	// copy it into the conf dir
-	if len(opts.IgnitionPath) > 0 {
-		err = ignBuilder.BuildWithIgnitionFile(opts.IgnitionPath)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		err = ignBuilder.GenerateIgnitionConfig()
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(opts.PlaybookPath) > 0 {
-		f, err := os.Open(opts.PlaybookPath)
-		if err != nil {
-			return err
-		}
-		s, err := io.ReadAll(f)
-		if err != nil {
-			return fmt.Errorf("read playbook: %w", err)
-		}
-
-		playbookDest := fmt.Sprintf("/home/%s/%s", userName, "playbook.yaml")
-
-		if mp.VMType() != machineDefine.WSLVirt {
-			err = ignBuilder.AddPlaybook(string(s), playbookDest, userName)
-			if err != nil {
-				return err
-			}
-		}
-
-		mc.Ansible = &vmconfigs.AnsibleConfig{
-			PlaybookPath: playbookDest,
-			Contents:     string(s),
-			User:         userName,
-		}
-	}
-
-	readyIgnOpts, err := mp.PrepareIgnition(mc, &ignBuilder)
-	if err != nil {
-		return err
-	}
-
-	readyUnitFile, err := ignition.CreateReadyUnitFile(mp.VMType(), readyIgnOpts)
-	if err != nil {
-		return err
-	}
-
-	readyUnit := ignition.Unit{
-		Enabled:  ignition.BoolToPtr(true),
-		Name:     "ready.service",
-		Contents: ignition.StrToPtr(readyUnitFile),
-	}
-	ignBuilder.WithUnit(readyUnit)
 
 	// Mounts
 	if mp.VMType() != machineDefine.WSLVirt {
@@ -279,7 +290,7 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 	callbackFuncs.Add(cleanup)
 
 	logrus.Warn("CreateVM")
-	err = mp.CreateVM(createOpts, mc, &ignBuilder)
+	err = mp.CreateVM(createOpts, mc, ignBuilder)
 	if err != nil {
 		return err
 	}
