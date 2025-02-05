@@ -278,16 +278,16 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		if err := connection.AddSSHConnectionsToPodmanSocket(mc.HostUser.UID, mc.SSH.Port, mc.SSH.IdentityPath, mc.Name, mc.SSH.RemoteUsername, opts); err != nil {
 			return err
 		}
-	}
 
-	cleanup := func() error {
-		machines, err := provider.GetAllMachinesAndRootfulness()
-		if err != nil {
-			return err
+		cleanup := func() error {
+			machines, err := provider.GetAllMachinesAndRootfulness()
+			if err != nil {
+				return err
+			}
+			return connection.RemoveConnections(machines, mc.Name, mc.Name+"-root")
 		}
-		return connection.RemoveConnections(machines, mc.Name, mc.Name+"-root")
+		callbackFuncs.Add(cleanup)
 	}
-	callbackFuncs.Add(cleanup)
 
 	logrus.Warn("CreateVM")
 	err = mp.CreateVM(createOpts, mc, ignBuilder)
