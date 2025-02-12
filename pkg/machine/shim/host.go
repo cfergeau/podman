@@ -187,6 +187,7 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 			HasSSH:       true,
 			UsesIgnition: true,
 			HasReadyUnit: true,
+			//ForwardSockets: true,
 		}
 	}
 	/* check the path to env.GetSSHIdentityPath */
@@ -506,6 +507,7 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 	if err != nil {
 		return err
 	}
+	logrus.Warnf("socket path: %s state: %d", forwardSocketPath, forwardingState)
 
 	callBackFuncs := machine.CleanUp()
 	defer callBackFuncs.CleanIfErr(&err)

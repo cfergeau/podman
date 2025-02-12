@@ -129,6 +129,7 @@ func startNetworking(mc *vmconfigs.MachineConfig, provider vmconfigs.VMProvider)
 			return "", 0, err
 		}
 	}
+	logrus.Warnf("hostSocks: %+v forwardSock: %+v", hostSocks, forwardSock)
 
 	if err := startHostForwarder(mc, provider, dirs, hostSocks); err != nil {
 		return "", 0, err
