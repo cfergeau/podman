@@ -678,10 +678,21 @@ func (c *Container) generateSpec(ctx context.Context) (s *spec.Spec, cleanupFunc
 			nprocSet = true
 		}
 	}
+	needsClamping := false
+	if !nofileSet || !nprocSet {
+		needsClamping = isRunningInUserNs
+		if !needsClamping {
+			has, err := hasCapSysResource()
+			if err != nil {
+				return nil, nil, err
+			}
+			needsClamping = !has
+		}
+	}
 	if !nofileSet {
 		max := rlimT(define.RLimitDefaultValue)
 		current := rlimT(define.RLimitDefaultValue)
-		if isRunningInUserNs {
+		if needsClamping {
 			var rlimit unix.Rlimit
 			if err := unix.Getrlimit(unix.RLIMIT_NOFILE, &rlimit); err != nil {
 				logrus.Warnf("Failed to return RLIMIT_NOFILE ulimit %q", err)
@@ -698,7 +709,7 @@ func (c *Container) generateSpec(ctx context.Context) (s *spec.Spec, cleanupFunc
 	if !nprocSet {
 		max := rlimT(define.RLimitDefaultValue)
 		current := rlimT(define.RLimitDefaultValue)
-		if isRunningInUserNs {
+		if needsClamping {
 			var rlimit unix.Rlimit
 			if err := unix.Getrlimit(unix.RLIMIT_NPROC, &rlimit); err != nil {
 				logrus.Warnf("Failed to return RLIMIT_NPROC ulimit %q", err)
@@ -741,7 +752,7 @@ func (c *Container) isWorkDirSymlink(resolvedPath string) bool {
 			break
 		}
 		if resolvedSymlink != "" {
-			_, resolvedSymlinkWorkdir, err := c.resolvePath(c.state.Mountpoint, resolvedSymlink)
+			_, resolvedSymlinkWorkdir, _, err := c.resolvePath(c.state.Mountpoint, resolvedSymlink)
 			if isPathOnVolume(c, resolvedSymlinkWorkdir) || isPathOnMount(c, resolvedSymlinkWorkdir) {
 				// Resolved symlink exists on external volume or mount
 				return true
@@ -780,7 +791,7 @@ func (c *Container) resolveWorkDir() error {
 		return nil
 	}
 
-	_, resolvedWorkdir, err := c.resolvePath(c.state.Mountpoint, workdir)
+	_, resolvedWorkdir, _, err := c.resolvePath(c.state.Mountpoint, workdir)
 	if err != nil {
 		return err
 	}
@@ -2073,7 +2084,7 @@ rootless=%d
 		}
 	}
 
-	return c.makePlatformBindMounts()
+	return c.makeHostnameBindMount()
 }
 
 // createResolvConf create the resolv.conf file and bind mount it
@@ -2963,7 +2974,11 @@ func (c *Container) fixVolumePermissions(v *ContainerNamedVolume) error {
 			return nil
 		}
 
-		st, err := os.Lstat(filepath.Join(c.state.Mountpoint, v.Dest))
+		finalPath, err := securejoin.SecureJoin(c.state.Mountpoint, v.Dest)
+		if err != nil {
+			return err
+		}
+		st, err := os.Lstat(finalPath)
 		if err == nil {
 			if stat, ok := st.Sys().(*syscall.Stat_t); ok {
 				uid, gid := int(stat.Uid), int(stat.Gid)

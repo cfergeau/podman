@@ -313,7 +313,7 @@ func setVolumeAtime(mountPoint string, st os.FileInfo) error {
 	return nil
 }
 
-func (c *Container) makePlatformBindMounts() error {
+func (c *Container) makeHostnameBindMount() error {
 	return nil
 }
 
@@ -409,4 +409,9 @@ func (c *Container) hasPrivateUTS() bool {
 	// should be optional but needs a FreeBSD section in the OCI runtime
 	// specification.
 	return true
+}
+
+// hasCapSysResource returns whether the current process has CAP_SYS_RESOURCE.
+func hasCapSysResource() (bool, error) {
+	return true, nil
 }

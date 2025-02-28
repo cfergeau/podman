@@ -21,6 +21,7 @@ import (
 	"github.com/containers/podman/v5/libpod/define"
 	"github.com/containers/podman/v5/libpod/shutdown"
 	"github.com/containers/podman/v5/pkg/rootless"
+	"github.com/moby/sys/capability"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/runtime-tools/generate"
 	"github.com/opencontainers/selinux/go-selinux/label"
@@ -688,7 +689,11 @@ func setVolumeAtime(mountPoint string, st os.FileInfo) error {
 	return nil
 }
 
-func (c *Container) makePlatformBindMounts() error {
+func (c *Container) makeHostnameBindMount() error {
+	if c.config.UseImageHostname {
+		return nil
+	}
+
 	// Make /etc/hostname
 	// This should never change, so no need to recreate if it exists
 	if _, ok := c.state.BindMounts["/etc/hostname"]; !ok {
@@ -831,3 +836,15 @@ func (c *Container) hasPrivateUTS() bool {
 	}
 	return privateUTS
 }
+
+// hasCapSysResource returns whether the current process has CAP_SYS_RESOURCE.
+var hasCapSysResource = sync.OnceValues(func() (bool, error) {
+	currentCaps, err := capability.NewPid2(0)
+	if err != nil {
+		return false, err
+	}
+	if err = currentCaps.Load(); err != nil {
+		return false, err
+	}
+	return currentCaps.Get(capability.EFFECTIVE, capability.CAP_SYS_RESOURCE), nil
+})

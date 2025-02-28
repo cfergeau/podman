@@ -187,6 +187,11 @@ skip "podman-build fails with 'context must be a directory'" \
 skip "does not pass in Podman CI: needs investigation" \
      "bud with --no-hostname"
 
+# 2024-11-22 not really a useful test of podman (the push/pull uses buildah binary)
+#            and it flakes when run in parallel. We choose to go with CI speed.
+skip "not a useful podman test, and it breaks when run parallel" \
+     "bud: build push with --force-compression"
+
 ###############################################################################
 # BEGIN tests which are skipped because they make no sense under podman-remote
 
@@ -270,6 +275,11 @@ skip_if_remote "Weird. This used to work remote, until Ed set TMPDIR in #5804" \
 skip_if_remote "different error messages between podman & podman-remote" \
                "bud with .dockerignore #2" \
                "bud with .dockerignore #4"
+
+# 2025-01-27: https://github.com/containers/podman/issues/25138
+skip_if_remote "FIXME #25138: mount cache not working one remote" \
+               "bud --layers with --mount type bind should burst cache if content is changed" \
+               "bud --layers with --mount type bind should burst and multiple mounts cache if content is changed"
 
 # END   tests which are skipped due to actual podman or podman-remote bugs.
 ###############################################################################

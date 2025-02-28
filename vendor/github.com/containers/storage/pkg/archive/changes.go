@@ -270,6 +270,7 @@ type FileInfo struct {
 	capability []byte
 	added      bool
 	xattrs     map[string]string
+	target     string
 }
 
 // LookUp looks up the file information of a file.
@@ -336,6 +337,7 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 			// back mtime
 			if statDifferent(oldStat, oldInfo, newStat, info) ||
 				!bytes.Equal(oldChild.capability, newChild.capability) ||
+				oldChild.target != newChild.target ||
 				!reflect.DeepEqual(oldChild.xattrs, newChild.xattrs) {
 				change := Change{
 					Path: newChild.path(),
@@ -390,6 +392,7 @@ func newRootFileInfo(idMappings *idtools.IDMappings) *FileInfo {
 		name:       string(os.PathSeparator),
 		idMappings: idMappings,
 		children:   make(map[string]*FileInfo),
+		target:     "",
 	}
 	return root
 }
@@ -449,7 +452,7 @@ func ChangesSize(newDir string, changes []Change) int64 {
 func ExportChanges(dir string, changes []Change, uidMaps, gidMaps []idtools.IDMap) (io.ReadCloser, error) {
 	reader, writer := io.Pipe()
 	go func() {
-		ta := newTarAppender(idtools.NewIDMappingsFromMaps(uidMaps, gidMaps), writer, nil)
+		ta := newTarWriter(idtools.NewIDMappingsFromMaps(uidMaps, gidMaps), writer, nil)
 
 		// this buffer is needed for the duration of this piped stream
 		defer pools.BufioWriter32KPool.Put(ta.Buffer)
@@ -478,7 +481,7 @@ func ExportChanges(dir string, changes []Change, uidMaps, gidMaps []idtools.IDMa
 				}
 			} else {
 				path := filepath.Join(dir, change.Path)
-				if err := ta.addTarFile(path, change.Path[1:]); err != nil {
+				if err := ta.addFile(path, change.Path[1:]); err != nil {
 					logrus.Debugf("Can't add file %s to tar: %s", path, err)
 				}
 			}

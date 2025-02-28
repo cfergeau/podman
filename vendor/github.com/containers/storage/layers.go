@@ -26,7 +26,6 @@ import (
 	"github.com/containers/storage/pkg/system"
 	"github.com/containers/storage/pkg/tarlog"
 	"github.com/containers/storage/pkg/truncindex"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/klauspost/pgzip"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/opencontainers/selinux/go-selinux"
@@ -336,6 +335,9 @@ type rwLayerStore interface {
 
 	// Clean up unreferenced layers
 	GarbageCollect() error
+
+	// Dedup deduplicates layers in the store.
+	dedup(drivers.DedupArgs) (drivers.DedupResult, error)
 }
 
 type multipleLockFile struct {
@@ -913,22 +915,31 @@ func (r *layerStore) load(lockedForWriting bool) (bool, error) {
 		// user of this storage area marked for deletion but didn't manage to
 		// actually delete.
 		var incompleteDeletionErrors error // = nil
+		var layersToDelete []*Layer
 		for _, layer := range r.layers {
 			if layer.Flags == nil {
 				layer.Flags = make(map[string]interface{})
 			}
 			if layerHasIncompleteFlag(layer) {
-				logrus.Warnf("Found incomplete layer %#v, deleting it", layer.ID)
-				err := r.deleteInternal(layer.ID)
-				if err != nil {
-					// Don't return the error immediately, because deleteInternal does not saveLayers();
-					// Even if deleting one incomplete layer fails, call saveLayers() so that other possible successfully
-					// deleted incomplete layers have their metadata correctly removed.
-					incompleteDeletionErrors = multierror.Append(incompleteDeletionErrors,
-						fmt.Errorf("deleting layer %#v: %w", layer.ID, err))
-				}
-				modifiedLocations |= layerLocation(layer)
+				// Important: Do not call r.deleteInternal() here. It modifies r.layers
+				// which causes unexpected side effects while iterating over r.layers here.
+				// The range loop has no idea that the underlying elements where shifted
+				// around.
+				layersToDelete = append(layersToDelete, layer)
 			}
+		}
+		// Now actually delete the layers
+		for _, layer := range layersToDelete {
+			logrus.Warnf("Found incomplete layer %q, deleting it", layer.ID)
+			err := r.deleteInternal(layer.ID)
+			if err != nil {
+				// Don't return the error immediately, because deleteInternal does not saveLayers();
+				// Even if deleting one incomplete layer fails, call saveLayers() so that other possible successfully
+				// deleted incomplete layers have their metadata correctly removed.
+				incompleteDeletionErrors = errors.Join(incompleteDeletionErrors,
+					fmt.Errorf("deleting layer %#v: %w", layer.ID, err))
+			}
+			modifiedLocations |= layerLocation(layer)
 		}
 		if err := r.saveLayers(modifiedLocations); err != nil {
 			return false, err
@@ -2244,33 +2255,33 @@ func (r *layerStore) Diff(from, to string, options *DiffOptions) (io.ReadCloser,
 	// but they modify in-memory state.
 	fgetter, err := r.newFileGetter(to)
 	if err != nil {
-		errs := multierror.Append(nil, fmt.Errorf("creating file-getter: %w", err))
+		errs := fmt.Errorf("creating file-getter: %w", err)
 		if err := decompressor.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing decompressor: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing decompressor: %w", err))
 		}
 		if err := tsfile.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing tarstream headers: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing tarstream headers: %w", err))
 		}
-		return nil, errs.ErrorOrNil()
+		return nil, errs
 	}
 
 	tarstream := asm.NewOutputTarStream(fgetter, metadata)
 	rc := ioutils.NewReadCloserWrapper(tarstream, func() error {
-		var errs *multierror.Error
+		var errs error
 		if err := decompressor.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing decompressor: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing decompressor: %w", err))
 		}
 		if err := tsfile.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing tarstream headers: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing tarstream headers: %w", err))
 		}
 		if err := tarstream.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing reconstructed tarstream: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing reconstructed tarstream: %w", err))
 		}
 		if err := fgetter.Close(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("closing file-getter: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("closing file-getter: %w", err))
 		}
 		if errs != nil {
-			return errs.ErrorOrNil()
+			return errs
 		}
 		return nil
 	})
@@ -2590,6 +2601,11 @@ func (r *layerStore) LayersByUncompressedDigest(d digest.Digest) ([]Layer, error
 // Requires startReading or startWriting.
 func (r *layerStore) LayersByTOCDigest(d digest.Digest) ([]Layer, error) {
 	return r.layersByDigestMap(r.bytocsum, d)
+}
+
+// Requires startWriting.
+func (r *layerStore) dedup(req drivers.DedupArgs) (drivers.DedupResult, error) {
+	return r.driver.Dedup(req)
 }
 
 func closeAll(closes ...func() error) (rErr error) {

@@ -10,7 +10,7 @@ load helpers.network
     err_no_such_cmd="Error:.*/no/such/command.*[Nn]o such file or directory"
     # runc: RHEL8 on 2023-07-17: "is a directory".
     # Everything else (crun; runc on debian): "permission denied"
-    err_no_exec_dir="Error:.*exec.*\\\(permission denied\\\|is a directory\\\)"
+    err_no_exec_dir="Error:.*\\\(exec.*\\\(permission denied\\\|is a directory\\\)\\\|is not a regular file\\\)"
 
     tests="
 true              |   0 |
@@ -1657,14 +1657,14 @@ search               | $IMAGE           |
     # runc and crun emit different diagnostics
     runtime=$(podman_runtime)
     case "$runtime" in
-        crun) expect='crun: executable file `` not found in $PATH: No such file or directory: OCI runtime attempted to invoke a command that was not found' ;;
+        crun) expect='\(executable file `` not found in $PATH\|cannot find `` in $PATH\): No such file or directory: OCI runtime attempted to invoke a command that was not found' ;;
         runc) expect='runc: runc create failed: unable to start container process: exec: "": executable file not found in $PATH: OCI runtime attempted to invoke a command that was not found' ;;
         *)    skip "Unknown runtime '$runtime'" ;;
     esac
 
     # The '.*' in the error below is for dealing with podman-remote, which
     # includes "error preparing container <sha> for attach" in output.
-    is "$output" "Error.*: $expect" "podman emits useful diagnostic when no entrypoint is set"
+    is "$output" "Error.* $expect" "podman emits useful diagnostic when no entrypoint is set"
 }
 
 # bats test_tags=ci:parallel
@@ -1709,6 +1709,23 @@ search               | $IMAGE           |
     is "$output" "exited" "container has successfully transitioned to exited state after stop"
 
     run_podman rm -f -t0 $cname
+}
+
+# bats test_tags=ci:parallel
+@test "podman run - no-hostname" {
+    randomname=c_$(safename)
+    echo "\
+from $IMAGE
+RUN umount /etc/hostname; rm /etc/hostname
+" > $PODMAN_TMPDIR/Containerfile
+    run_podman build -t $randomname --cap-add SYS_ADMIN ${PODMAN_TMPDIR}
+
+    run_podman run --rm $randomname ls /etc/hostname
+
+    run_podman 1 run --no-hostname --rm $randomname ls /etc/hostname
+    is "$output" "ls: /etc/hostname: No such file or directory" "container did not add /etc/hostname"
+
+    run_podman rmi $randomname
 }
 
 # vim: filetype=sh
