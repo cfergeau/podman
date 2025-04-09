@@ -84,8 +84,9 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 	}
 
 	if opts.Capabilities == nil {
+		var defaultCapabilities *machineDefine.MachineCapabilities = nil
 		opts.Capabilities = &machineDefine.MachineCapabilities{
-			ForwardSockets: true,
+			ForwardSockets: defaultCapabilities.GetForwardSockets(),
 		}
 	}
 	/* check the path to env.GetSSHIdentityPath */
