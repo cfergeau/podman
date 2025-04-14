@@ -210,7 +210,7 @@ func configureSystem(mc *vmconfigs.MachineConfig, dist string, ansibleConfig *vm
 		}
 	}
 
-	return changeDistUserModeNetworking(dist, user, mc.ImagePath.GetPath(), mc.WSLHypervisor.UserModeNetworking)
+	return changeDistUserModeNetworking(dist, user, mc.ImagePath.GetPath(), mc.WSLHypervisor.UserModeNetworking, mc.Capabilities.GetForwardSockets())
 }
 
 func configureBindMounts(dist string, user string) error {
@@ -660,9 +660,13 @@ func getAllWSLDistros(running bool) (map[string]struct{}, error) {
 	return all, nil
 }
 
-func isSystemdRunning(dist string) (bool, error) {
+func isSystemdRunning(dist string, podmanSetup bool) (bool, error) {
 	cmd := exec.Command(wutil.FindWSL(), "-u", "root", "-d", dist, "sh")
-	cmd.Stdin = strings.NewReader(sysdpid + "\necho $SYSDPID\n")
+	sysdpidScript := sysdpid
+	if !podmanSetup {
+		sysdpidScript = sysdpidSystemdConfig
+	}
+	cmd.Stdin = strings.NewReader(sysdpidScript + "\necho $SYSDPID\n")
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return false, err
@@ -708,8 +712,8 @@ func unregisterDist(dist string) error {
 	return nil
 }
 
-func isRunning(name string) (bool, error) {
-	dist := env.WithToolPrefix(name)
+func isRunning(mc *vmconfigs.MachineConfig) (bool, error) {
+	dist := env.WithToolPrefix(mc.Name)
 	wsl, err := isWSLRunning(dist)
 	if err != nil {
 		return false, err
@@ -717,7 +721,7 @@ func isRunning(name string) (bool, error) {
 
 	sysd := false
 	if wsl {
-		sysd, err = isSystemdRunning(dist)
+		sysd, err = isSystemdRunning(dist, mc.Capabilities.GetForwardSockets())
 
 		if err != nil {
 			return false, err
