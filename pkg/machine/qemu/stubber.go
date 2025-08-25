@@ -242,6 +242,9 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 		if err := processCheckFunc(); err != nil {
 			logrus.Warnf("check for process status errored out: %v", err)
 		}
+		if stderrBuf != nil && stderrBuf.Len() != 0 {
+			logrus.Warnf("failed to start QEMU: %s", stderrBuf.String())
+		}
 		if err := cmd.Process.Release(); err != nil {
 			return err
 		}
