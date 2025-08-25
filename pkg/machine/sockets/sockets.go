@@ -36,17 +36,7 @@ func ListenAndWaitOnSocket(errChan chan<- error, listener net.Listener) {
 
 // DialSocketWithBackoffs attempts to connect to the socket in maxBackoffs attempts
 func DialSocketWithBackoffs(maxBackoffs int, backoff time.Duration, socketPath string) (conn net.Conn, err error) {
-	for i := 0; i < maxBackoffs; i++ {
-		if i > 0 {
-			time.Sleep(backoff)
-			backoff *= 2
-		}
-		conn, err = net.Dial("unix", socketPath)
-		if err == nil {
-			return conn, nil
-		}
-	}
-	return nil, err
+	return DialSocketWithBackoffsAndCheckFunc(maxBackoffs, backoff, socketPath, nil)
 }
 
 // DialSocketWithBackoffsAndProcCheck attempts to connect to the socket in
@@ -68,9 +58,11 @@ func DialSocketWithBackoffsAndCheckFunc(
 			return conn, nil
 		}
 
-		err = checkFunc()
-		if err != nil {
-			return nil, err
+		if checkFunc != nil {
+			err = checkFunc()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return nil, err
