@@ -32,7 +32,7 @@ func NewQuayPuller(vmType define.VMType, mc *MachineConfig) (*QuayPuller, error)
 	return &puller, nil
 }
 
-func (puller QuayPuller) SetSourceURI(uri string) {
+func (puller *QuayPuller) SetSourceURI(uri string) {
 	puller.sourceURI = uri
 }
 
@@ -55,11 +55,11 @@ func localImagePath(machineDirs *define.MachineDirs, name string, imageExtension
 	return machineDirs.DataDir.AppendToNewVMFile(fmt.Sprintf("%s-%s%s", name, runtime.GOARCH, imageExtension), nil)
 }
 
-func (puller QuayPuller) LocalPath() (*define.VMFile, error) {
+func (puller *QuayPuller) LocalPath() (*define.VMFile, error) {
 	return localImagePath(puller.machineDirs, puller.machineConfig.Name, imageExtension(puller.vmType))
 }
 
-func (puller QuayPuller) Download() error {
+func (puller *QuayPuller) Download() error {
 	imagePath, err := puller.LocalPath()
 	if err != nil {
 		return err
