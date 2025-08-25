@@ -2,7 +2,6 @@ package sockets
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"net/url"
@@ -53,14 +52,11 @@ func DialSocketWithBackoffs(maxBackoffs int, backoff time.Duration, socketPath s
 // DialSocketWithBackoffsAndProcCheck attempts to connect to the socket in
 // maxBackoffs attempts. After every failure to connect, it makes sure the
 // specified process is alive
-func DialSocketWithBackoffsAndProcCheck(
+func DialSocketWithBackoffsAndCheckFunc(
 	maxBackoffs int,
 	backoff time.Duration,
 	socketPath string,
-	checkProccessStatus func(string, int, *bytes.Buffer) error,
-	procHint string,
-	procPid int,
-	errBuf *bytes.Buffer,
+	checkFunc func() error,
 ) (conn net.Conn, err error) {
 	for i := 0; i < maxBackoffs; i++ {
 		if i > 0 {
@@ -72,8 +68,7 @@ func DialSocketWithBackoffsAndProcCheck(
 			return conn, nil
 		}
 
-		// check to make sure process denoted by procHint is alive
-		err = checkProccessStatus(procHint, procPid, errBuf)
+		err = checkFunc()
 		if err != nil {
 			return nil, err
 		}
