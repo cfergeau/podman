@@ -224,6 +224,8 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	logrus.Debugf("Started qemu pid %d", cmd.Process.Pid)
 
 	readyFunc := func() error { return nil }
+	/* FIXME: waitForReady() also ensures the QEMU process does not die early, before starting the VM */
+	/* We lose this when we skip it… */
 	if mc.Capabilities.GetHasReadyUnit() {
 		readySocket, err := mc.ReadySocket()
 		if err != nil {
