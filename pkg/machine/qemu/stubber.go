@@ -256,7 +256,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 func waitForReady(readySocket *define.VMFile, pid int, stdErrBuffer *bytes.Buffer) error {
 	defaultBackoff := 500 * time.Millisecond
 	maxBackoffs := 6
-	conn, err := sockets.DialSocketWithBackoffsAndProcCheck(maxBackoffs, defaultBackoff, readySocket.GetPath(), checkProcessStatus, "qemu", pid, stdErrBuffer)
+	conn, err := sockets.DialSocketWithBackoffsAndProcCheck(maxBackoffs, defaultBackoff, readySocket.GetPath(), machine.CheckProcessRunning, "qemu", pid, stdErrBuffer)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@
 package qemu
 
 import (
-	"bytes"
 	"fmt"
 	"syscall"
 
@@ -16,26 +15,6 @@ func isProcessAlive(pid int) bool {
 		return true
 	}
 	return false
-}
-
-func checkProcessStatus(processHint string, pid int, stderrBuf *bytes.Buffer) error {
-	var status syscall.WaitStatus
-	pid, err := syscall.Wait4(pid, &status, syscall.WNOHANG, nil)
-	if err != nil {
-		return fmt.Errorf("failed to read %s process status: %w", processHint, err)
-	}
-	if pid > 0 {
-		stderr := fmt.Sprintf(", stderr: %s", stderrBuf)
-		// Child exited, process is no longer running
-		if status.Exited() {
-			return fmt.Errorf("%s exited unexpectedly with exit code %d%s", processHint, status.ExitStatus(), stderr)
-		}
-		if status.Signaled() {
-			return fmt.Errorf("%s was terminated by signal: %s%s", processHint, status.Signal().String(), stderr)
-		}
-		return fmt.Errorf("%s exited unexpectedly%s", processHint, stderr)
-	}
-	return nil
 }
 
 func sigKill(pid int) error {

@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/containers/common/pkg/config"
@@ -311,7 +310,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 					return
 				default:
 				}
-				if err := CheckProcessRunning(cmdBinary, cmd.Process.Pid); err != nil {
+				if err := machine.CheckProcessRunning(cmdBinary, cmd.Process.Pid, nil); err != nil {
 					processErrChan <- err
 					return
 				}
@@ -411,27 +410,6 @@ func getFirstBootAppleVMCloudInit(mc *vmconfigs.MachineConfig) ([]string, error)
 		}
 		return []string{"--device", fmt.Sprintf("virtio-blk,path=%s", cloudinitISO.GetPath())}, nil
 	}
-}
-
-// CheckProcessRunning checks non blocking if the pid exited
-// returns nil if process is running otherwise an error if not
-func CheckProcessRunning(processName string, pid int) error {
-	var status syscall.WaitStatus
-	pid, err := syscall.Wait4(pid, &status, syscall.WNOHANG, nil)
-	if err != nil {
-		return fmt.Errorf("failed to read %s process status: %w", processName, err)
-	}
-	if pid > 0 {
-		// Child exited, process is no longer running
-		if status.Exited() {
-			return fmt.Errorf("%s exited unexpectedly with exit code %d", processName, status.ExitStatus())
-		}
-		if status.Signaled() {
-			return fmt.Errorf("%s was terminated by signal: %s", processName, status.Signal().String())
-		}
-		return fmt.Errorf("%s exited unexpectedly", processName)
-	}
-	return nil
 }
 
 // StartGenericNetworking is wrapped by apple provider methods
