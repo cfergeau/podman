@@ -230,7 +230,7 @@ func (w WSLStubber) PostStartNetworking(mc *vmconfigs.MachineConfig, noInfo bool
 	return nil
 }
 
-func (w WSLStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, error) {
+func (w WSLStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, func() error, error) {
 	dist := env.WithToolPrefix(mc.Name)
 
 	var err error
@@ -249,7 +249,7 @@ func (w WSLStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() e
 		return nil
 	}
 
-	return nil, readyFunc, err
+	return nil, readyFunc, nil, err
 }
 
 func (w WSLStubber) State(mc *vmconfigs.MachineConfig, bypass bool) (define.Status, error) {

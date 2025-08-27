@@ -143,22 +143,22 @@ func GenerateSystemDFilesForVirtiofsMounts(mounts []machine.VirtIoFs) ([]ignitio
 }
 
 // StartGenericAppleVM is wrapped by apple provider methods and starts the vm
-func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootloader vfConfig.Bootloader, endpoint string) (func() error, func() error, error) {
+func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootloader vfConfig.Bootloader, endpoint string) (func() error, func() error, func() error, error) {
 	// Add networking
 	netDevice, err := vfConfig.VirtioNetNew(applehvMACAddress)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Set user networking with gvproxy
 	gvproxySocket, err := mc.GVProxySocket()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Wait on gvproxy to be running and aware
 	if err := sockets.WaitForSocketWithBackoffs(gvProxyMaxBackoffAttempts, gvProxyWaitBackoff, gvproxySocket.GetPath(), "gvproxy"); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	netDevice.SetUnixSocketPath(gvproxySocket.GetPath())
@@ -169,7 +169,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 
 	defaultDevices, readySocket, err := GetDefaultDevices(mc)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	vm.Devices = append(vm.Devices, defaultDevices...)
@@ -177,26 +177,26 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 
 	mounts, err := VirtIOFsToVFKitVirtIODevice(mc.Mounts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	vm.Devices = append(vm.Devices, mounts...)
 
 	// To start the VM, we need to call vfkit
 	cfg, err := config.Default()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	cmdBinaryPath, err := cfg.FindHelperBinary(cmdBinary, true)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	logrus.Debugf("helper binary path is: %s", cmdBinaryPath)
 
 	cmd, err := vm.Cmd(cmdBinaryPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		cmd.Stdout = os.Stdout
@@ -205,7 +205,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 
 	endpointArgs, err := GetVfKitEndpointCMDArgs(endpoint)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	cmd.Args = append(cmd.Args, endpointArgs...)
@@ -213,7 +213,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		debugDevArgs, err := GetDebugDevicesCMDArgs()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		cmd.Args = append(cmd.Args, debugDevArgs...)
 		cmd.Args = append(cmd.Args, "--gui") // add command line switch to pop the gui open
@@ -235,7 +235,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 		}
 
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		logrus.Debug("first boot detected")
 		cmd.Args = append(cmd.Args, firstBootCli...)
@@ -249,7 +249,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 		}
 		readyListen, err := net.Listen("unix", readySocket.GetPath())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		logrus.Debug("waiting for ready notification")
@@ -261,41 +261,41 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 	if mc.LibKrunHypervisor != nil && logrus.IsLevelEnabled(logrus.DebugLevel) {
 		rtDir, err := mc.RuntimeDir()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		kdFile, err := rtDir.AppendToNewVMFile("krunkit-debug.sh", nil)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		f, err := os.Create(kdFile.Path)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		err = os.Chmod(kdFile.Path, 0744)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		_, err = f.WriteString("#!/bin/sh\nexec ")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		for _, arg := range cmd.Args {
 			_, err = fmt.Fprintf(f, "%q ", arg)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 		err = f.Close()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		cmd = exec.Command("/usr/bin/open", "-Wa", "Terminal", kdFile.Path)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	returnFunc := func() error {
@@ -333,7 +333,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 		}
 		return nil
 	}
-	return cmd.Process.Release, returnFunc, nil
+	return cmd.Process.Release, returnFunc, nil, nil
 }
 
 func ignitionSocket(dataDir *define.VMFile, name string) (*define.VMFile, error) {

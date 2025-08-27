@@ -234,14 +234,14 @@ func (h HyperVStubber) StartNetworking(mc *vmconfigs.MachineConfig, cmd *gvproxy
 	return nil
 }
 
-func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, error) {
+func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, func() error, error) {
 	var (
 		err error
 	)
 
 	_, vm, err := GetVMFromMC(mc)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	callbackFuncs := machine.CleanUp()
@@ -252,7 +252,7 @@ func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func(
 		// Add ignition entries to windows registry
 		// for first boot only
 		if err := readAndSplitIgnition(mc, vm); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		// this is added because if the machine does not start
@@ -277,7 +277,7 @@ func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func(
 	if mc.HyperVHypervisor.ReadyVsock.KeyName != "" {
 		waitReady, listener, err = mc.HyperVHypervisor.ReadyVsock.ListenSetupWait()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -287,7 +287,7 @@ func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func(
 		if listener != nil {
 			_ = listener.Close()
 		}
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	startCallback := func() error {
@@ -295,7 +295,7 @@ func (h HyperVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func(
 	}
 	callbackFuncs.Add(startCallback)
 
-	return nil, waitReady, err
+	return nil, waitReady, nil, err
 }
 
 // State is returns the state as a define.status.  for hyperv, state differs from others because

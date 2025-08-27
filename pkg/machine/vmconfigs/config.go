@@ -79,7 +79,7 @@ type VMProvider interface { //nolint:interfacebloat
 	SetProviderAttrs(mc *MachineConfig, opts define.SetOptions) error
 	StartNetworking(mc *MachineConfig, cmd *gvproxy.GvproxyCommand) error
 	PostStartNetworking(mc *MachineConfig, noInfo bool) error
-	StartVM(mc *MachineConfig) (func() error, func() error, error)
+	StartVM(mc *MachineConfig) (func() error, func() error, func() error, error)
 	State(mc *MachineConfig, bypass bool) (define.Status, error)
 	StopVM(mc *MachineConfig, hardStop bool) error
 	StopHostNetworking(mc *MachineConfig, vmType define.VMType) error

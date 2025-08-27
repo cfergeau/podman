@@ -116,15 +116,15 @@ func (a *AppleHVStubber) StartNetworking(mc *vmconfigs.MachineConfig, cmd *gvpro
 	return apple.StartGenericNetworking(mc, cmd)
 }
 
-func (a *AppleHVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, error) {
+func (a *AppleHVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, func() error, error) {
 	bl := mc.AppleHypervisor.Vfkit.VirtualMachine.Bootloader
 	if bl == nil {
-		return nil, nil, fmt.Errorf("unable to determine boot loader for this machine")
+		return nil, nil, nil, fmt.Errorf("unable to determine boot loader for this machine")
 	}
 
 	cfg, err := config.Default()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	rosetta := cfg.Machine.Rosetta
 	rosettaNew := rosetta

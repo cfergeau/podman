@@ -153,45 +153,45 @@ func runStartVMCommand(cmd *exec.Cmd) error {
 	return nil
 }
 
-func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, error) {
+func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, func() error, error) {
 	if err := q.setQEMUCommandLine(mc); err != nil {
-		return nil, nil, fmt.Errorf("unable to generate qemu command line: %q", err)
+		return nil, nil, nil, fmt.Errorf("unable to generate qemu command line: %q", err)
 	}
 
 	gvProxySock, err := mc.GVProxySocket()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Wait on gvproxy to be running and aware
 	if err := sockets.WaitForSocketWithBackoffs(gvProxyMaxBackoffAttempts, gvProxyWaitBackoff, gvProxySock.GetPath(), "gvproxy"); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	dnr, dnw, err := machine.GetDevNullFiles()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer dnr.Close()
 	defer dnw.Close()
 
 	runtime, err := mc.RuntimeDir()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var spawner *virtiofsdSpawner
 	if len(mc.Mounts) > 0 {
 		spawner, err = newVirtiofsdSpawner(runtime)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
 	for _, hostmnt := range mc.Mounts {
 		qemuArgs, virtiofsdHelper, err := spawner.spawnForMount(hostmnt)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to init virtiofsd for mount %s: %w", hostmnt.Source, err)
+			return nil, nil, nil, fmt.Errorf("failed to init virtiofsd for mount %s: %w", hostmnt.Source, err)
 		}
 		q.Command = append(q.Command, qemuArgs...)
 		q.virtiofsHelpers = append(q.virtiofsHelpers, *virtiofsdHelper)
@@ -219,7 +219,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	}
 
 	if err := runStartVMCommand(cmd); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	logrus.Debugf("Started qemu pid %d", cmd.Process.Pid)
 
@@ -229,7 +229,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	if mc.Capabilities.GetHasReadyUnit() {
 		readySocket, err := mc.ReadySocket()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		readyFunc = func() error {
@@ -250,7 +250,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	}
 
 	// if this is not the last line in the func, make it a defer
-	return releaseFunc, readyFunc, nil
+	return releaseFunc, readyFunc, nil, nil
 }
 
 func waitForReady(readySocket *define.VMFile, pid int, stdErrBuffer *bytes.Buffer) error {

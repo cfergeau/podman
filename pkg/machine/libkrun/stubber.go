@@ -101,10 +101,10 @@ func (l *LibKrunStubber) PostStartNetworking(mc *vmconfigs.MachineConfig, noInfo
 	return nil
 }
 
-func (l *LibKrunStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, error) {
+func (l *LibKrunStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func() error, func() error, error) {
 	bl := mc.LibKrunHypervisor.KRun.VirtualMachine.Bootloader
 	if bl == nil {
-		return nil, nil, fmt.Errorf("unable to determine boot loader for this machine")
+		return nil, nil, nil, fmt.Errorf("unable to determine boot loader for this machine")
 	}
 	return apple.StartGenericAppleVM(mc, krunkitBinary, bl, mc.LibKrunHypervisor.KRun.Endpoint)
 }

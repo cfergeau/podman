@@ -555,7 +555,7 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 	// releaseFunc is if the provider starts a vm using a go command
 	// and we still need control of it while it is booting until the ready
 	// socket is tripped
-	releaseCmd, WaitForReady, err := mp.StartVM(mc)
+	releaseCmd, WaitForReady, _, err := mp.StartVM(mc)
 	if err != nil {
 		return err
 	}
