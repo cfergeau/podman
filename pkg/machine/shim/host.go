@@ -555,7 +555,7 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 	// releaseFunc is if the provider starts a vm using a go command
 	// and we still need control of it while it is booting until the ready
 	// socket is tripped
-	releaseCmd, WaitForReady, _, err := mp.StartVM(mc)
+	releaseCmd, WaitForReady, checkProcessAlive, err := mp.StartVM(mc)
 	if err != nil {
 		return err
 	}
@@ -570,6 +570,11 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 		}
 	}
 
+	if checkProcessAlive != nil {
+		if err := checkProcessAlive(); err != nil {
+			return err
+		}
+	}
 	if releaseCmd != nil && releaseCmd() != nil { // some providers can return nil here (hyperv)
 		if err := releaseCmd(); err != nil {
 			// I think it is ok for a "light" error?

@@ -226,6 +226,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	readyFunc := func() error { return nil }
 	/* FIXME: waitForReady() also ensures the QEMU process does not die early, before starting the VM */
 	/* We lose this when we skip it… */
+	processCheckFunc := func() error { return machine.CheckProcessRunning("qemu", cmd.Process.Pid, stderrBuf) }
 	if mc.Capabilities.GetHasReadyUnit() {
 		readySocket, err := mc.ReadySocket()
 		if err != nil {
@@ -233,7 +234,7 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 		}
 
 		readyFunc = func() error {
-			return waitForReady(readySocket, cmd.Process.Pid, stderrBuf)
+			return waitForReady(readySocket, processCheckFunc)
 		}
 	}
 
@@ -250,14 +251,13 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	}
 
 	// if this is not the last line in the func, make it a defer
-	return releaseFunc, readyFunc, nil, nil
+	return releaseFunc, readyFunc, processCheckFunc, nil
 }
 
-func waitForReady(readySocket *define.VMFile, pid int, stdErrBuffer *bytes.Buffer) error {
+func waitForReady(readySocket *define.VMFile, processCheckFunc func() error) error {
 	defaultBackoff := 500 * time.Millisecond
 	maxBackoffs := 6
-	checkFunc := func() error { return machine.CheckProcessRunning("qemu", pid, stdErrBuffer) }
-	conn, err := sockets.DialSocketWithBackoffsAndCheckFunc(maxBackoffs, defaultBackoff, readySocket.GetPath(), checkFunc)
+	conn, err := sockets.DialSocketWithBackoffsAndCheckFunc(maxBackoffs, defaultBackoff, readySocket.GetPath(), processCheckFunc)
 	if err != nil {
 		return err
 	}
