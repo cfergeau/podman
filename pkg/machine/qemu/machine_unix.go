@@ -25,8 +25,15 @@ func checkProcessStatus(processHint string, pid int, stderrBuf *bytes.Buffer) er
 		return fmt.Errorf("failed to read %s process status: %w", processHint, err)
 	}
 	if pid > 0 {
-		// child exited
-		return fmt.Errorf("%s exited unexpectedly with exit code %d, stderr: %s", processHint, status.ExitStatus(), stderrBuf.String())
+		stderr := fmt.Sprintf(", stderr: %s", stderrBuf)
+		// Child exited, process is no longer running
+		if status.Exited() {
+			return fmt.Errorf("%s exited unexpectedly with exit code %d%s", processHint, status.ExitStatus(), stderr)
+		}
+		if status.Signaled() {
+			return fmt.Errorf("%s was terminated by signal: %s%s", processHint, status.Signal().String(), stderr)
+		}
+		return fmt.Errorf("%s exited unexpectedly%s", processHint, stderr)
 	}
 	return nil
 }
