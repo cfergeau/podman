@@ -137,11 +137,16 @@ func startNetworking(mc *vmconfigs.MachineConfig, provider vmconfigs.VMProvider)
 
 // conductVMReadinessCheck checks to make sure the machine is in the proper state
 // and that SSH is up and running
-func conductVMReadinessCheck(mc *vmconfigs.MachineConfig, maxBackoffs int, backoff time.Duration, stateF func() (define.Status, error)) (connected bool, sshError error, err error) {
+func conductVMReadinessCheck(mc *vmconfigs.MachineConfig, maxBackoffs int, backoff time.Duration, stateF func() (define.Status, error), checkProcessAlive func() error) (connected bool, sshError error, err error) {
 	for i := 0; i < maxBackoffs; i++ {
 		if i > 0 {
 			time.Sleep(backoff)
 			backoff *= 2
+		}
+		if checkProcessAlive != nil {
+			if err := checkProcessAlive(); err != nil {
+				return false, nil, err
+			}
 		}
 		state, err := stateF()
 		if err != nil {

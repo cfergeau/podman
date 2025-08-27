@@ -595,7 +595,7 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 		return mp.State(mc, true)
 	}
 
-	connected, sshError, err := conductVMReadinessCheck(mc, maxBackoffs, defaultBackoff, stateF)
+	connected, sshError, err := conductVMReadinessCheck(mc, maxBackoffs, defaultBackoff, stateF, checkProcessAlive)
 	if err != nil {
 		return err
 	}
