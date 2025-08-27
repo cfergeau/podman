@@ -298,6 +298,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 		return nil, nil, nil, err
 	}
 
+	processCheckFunc := func() error { return machine.CheckProcessRunning(cmdBinary, cmd.Process.Pid, nil) }
 	returnFunc := func() error {
 		processErrChan := make(chan error)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -310,7 +311,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 					return
 				default:
 				}
-				if err := machine.CheckProcessRunning(cmdBinary, cmd.Process.Pid, nil); err != nil {
+				if err := processCheckFunc(); err != nil {
 					processErrChan <- err
 					return
 				}
@@ -333,7 +334,7 @@ func StartGenericAppleVM(mc *vmconfigs.MachineConfig, cmdBinary string, bootload
 		}
 		return nil
 	}
-	return cmd.Process.Release, returnFunc, nil, nil
+	return cmd.Process.Release, returnFunc, processCheckFunc, nil
 }
 
 func ignitionSocket(dataDir *define.VMFile, name string) (*define.VMFile, error) {
