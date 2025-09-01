@@ -145,6 +145,7 @@ func conductVMReadinessCheck(mc *vmconfigs.MachineConfig, maxBackoffs int, backo
 		}
 		if checkProcessAlive != nil {
 			if err := checkProcessAlive(); err != nil {
+				logrus.Warnf("checkProcessAlive failure in conductVMReadinessCheck")
 				return false, nil, err
 			}
 		}

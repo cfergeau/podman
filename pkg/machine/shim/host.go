@@ -572,6 +572,7 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 
 	if checkProcessAlive != nil {
 		if err := checkProcessAlive(); err != nil {
+			logrus.Warnf("checkProcessAlive failure before releaseCmd")
 			return err
 		}
 	}
